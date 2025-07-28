@@ -1,9 +1,9 @@
 // ==UserScript==
-// @name          Block Ad Banners
+// @name          YTUltra++
 // @namespace     http://tampermonkey.net/
-// @version       5.3.0 // Removed comments lazy load, added UI animation/shadow reduction, disabled preloading, deeper Shorts blocking.
+// @version       1.1
 // @description   YouTube enhancement script focused on removing static ad banners, with options for Shorts hiding, custom backgrounds (color or image link), and an enhanced performance mode.
-// @author        You
+// @author        sypcer
 // @match         *://*.youtube.com/*
 // @grant         GM_setValue
 // @grant         GM_getValue
