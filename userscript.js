@@ -4,7 +4,8 @@
 // @version       1.1
 // @description   YouTube enhancement script focused on removing static ad banners, with options for Shorts hiding, custom backgrounds (color or image link), and an enhanced performance mode.
 // @author        sypcer
-// @match         *://*.youtube.com/*
+// @match         https://www.youtube.com/*
+// @match         https://m.youtube.com/*
 // @grant         GM_setValue
 // @grant         GM_getValue
 // @grant         GM_xmlhttpRequest
@@ -15,7 +16,7 @@
 (function () {
     'use strict';
 
-    console.log("Block Ad Banners: Script started.");
+    console.log("YTUltra++: Script started.");
 
     // Define ad selectors globally for easy management - focused on static banners and display ads
     const AD_SELECTORS = [
@@ -44,7 +45,6 @@
         '#panels:has(ytd-ads-engagement-panel-content-renderer)', // Engagement panel with ads
         '.yt-mealbar-promo-renderer', // Mealbar promotions
     ];
-
     // Define Shorts selectors
     const SHORTS_SELECTORS = [
         'ytd-rich-shelf-renderer[is-shorts]',
@@ -53,10 +53,8 @@
         'ytd-player[player-type="SHORTS_PLAYER"]',
         'ytd-compact-video-renderer:has(ytd-thumbnail-overlay-time-status-renderer[overlay-style="SHORTS"])'
     ];
-
     // CSS for hiding elements and general performance tweaks
     let DYNAMIC_HIDE_CSS = ``;
-
     // Load initial settings synchronously for immediate effect
     const settings = {
         enableAdBannerBlock: GM_getValue('enableAdBannerBlock', true),
@@ -71,7 +69,6 @@
     // Construct the dynamic CSS based on initial settings
     const updateAndInjectEarlyHidingCSS = () => {
         let currentCss = ``;
-
         if (settings.enableAdBannerBlock) {
             currentCss += `${AD_SELECTORS.join(', ')} { display: none !important; width: 0 !important; height: 0 !important; overflow: hidden !important; margin: 0 !important; padding: 0 !important; }`;
             // Add specific visibility hidden for some elements for robustness
@@ -87,10 +84,6 @@
                 }
             `;
         }
-        // Shorts will be removed via JS instead of just hidden by CSS for deeper blocking
-        // if (settings.hideShorts) {
-        //     currentCss += `${SHORTS_SELECTORS.join(', ')} { display: none !important; }`;
-        // }
 
         // Add performance CSS if enabled
         if (settings.enablePerformanceMode) {
@@ -122,12 +115,10 @@
             document.head.appendChild(style);
         }
         style.textContent = currentCss;
-        console.log("Block Ad Banners: Early hiding/performance CSS injected/updated.");
+        console.log("YTUltra++: Early hiding/performance CSS injected/updated.");
     };
-
     // Initial injection of the hide CSS based on loaded settings
     updateAndInjectEarlyHidingCSS();
-
     // Utility function for debouncing
     const debounce = (func, delay) => {
         let timeout;
@@ -141,7 +132,8 @@
     // Store references to observers to manage them
     let mainContentObserverInstance = null;
     let backgroundStyleObserver = null; // New observer for background persistence
-    let headObserver = null; // New observer for preloading links
+    let headObserver = null;
+    // New observer for preloading links
 
     // Adds only the necessary styles for the script's UI and new features, preventing conflicts with YouTube's CSS.
     const addScopedCSS = () => {
@@ -156,11 +148,32 @@
             }
             .yt-ultra-container {
                 background-color: rgb(30, 30, 30);
-                max-width: 640px; width: 90vw;
-                padding: 25px; /* Reduced padding */
-                border-radius: 16px; color: white; display: flex;
-                flex-direction: column; align-items: center; gap: 24px; position: relative; /* Reduced main section gap */
+                max-width: 90vw; /* Responsive max-width */
+                width: 90vw; /* Initial width */
+                max-height: 90vh; /* Responsive max-height */
+                padding: 5vw; /* Responsive padding */
+                border-radius: 16px;
+                color: white; display: flex;
+                flex-direction: column; align-items: center; gap: 4vw; position: relative; /* Responsive gap */
+                box-sizing: border-box; /* Include padding in width/height */
+                overflow-y: auto; /* Enable scrolling for smaller screens */
             }
+
+            @media (min-width: 600px) {
+                .yt-ultra-container {
+                    max-width: 500px;
+                    width: auto; /* Let content determine width up to max-width */
+                    padding: 25px;
+                    gap: 24px;
+                }
+            }
+
+            @media (min-width: 900px) {
+                .yt-ultra-container {
+                    max-width: 640px;
+                }
+            }
+
             .yt-ultra-close-btn {
                 position: absolute;
                 top: 15px; right: 20px; font-size: 28px;
@@ -230,9 +243,12 @@
             ytd-app.yt-ultra-custom-bg-enabled #contents,
             /* Search box background transparency */
             .ytSearchboxComponentInputBox.yt-ultra-custom-bg-enabled {
-                background: transparent !important; /* Use shorthand for robustness */
-                filter: none !important; /* Remove any CSS filters that might obscure background */
-                backdrop-filter: none !important; /* Remove any backdrop filters */
+                background: transparent !important;
+                /* Use shorthand for robustness */
+                filter: none !important;
+                /* Remove any CSS filters that might obscure background */
+                backdrop-filter: none !important;
+                /* Remove any backdrop filters */
             }
             /* Override potential dark themes to ensure custom background is seen */
             html.yt-ultra-custom-bg-enabled:not([dark]),
@@ -248,17 +264,6 @@
         style.textContent = css;
     };
 
-    const waitForElement = (selector, callback) => {
-        const observer = new MutationObserver((mutations, obs) => {
-            const el = document.querySelector(selector);
-            if (el) {
-                obs.disconnect();
-                callback(el);
-            }
-        });
-        observer.observe(document.body, { childList: true, subtree: true });
-    };
-
     // --- Dynamic Content Hider (Shorts Only in this function) ---
     function hideDynamicShortsContent() {
         if (settings.hideShorts) {
@@ -266,7 +271,6 @@
                 document.querySelectorAll(selector).forEach(element => {
                     if (element && element.parentNode) { // Check if element exists and is in DOM
                         element.remove(); // Deeper blocking: remove element from DOM
-                        // console.log(`Block Ad Banners: Dynamically removed Shorts element: ${selector}`);
                     }
                 });
             });
@@ -277,11 +281,11 @@
         if (mainContentObserverInstance) {
             mainContentObserverInstance.disconnect();
             mainContentObserverInstance = null;
-            console.log('Block Ad Banners: Main content observer disconnected.');
+            console.log('YTUltra++: Main content observer disconnected.');
         }
 
         if (settings.hideShorts) {
-            console.log('Block Ad Banners: Initializing main content observer for dynamic Shorts hiding.');
+            console.log('YTUltra++: Initializing main content observer for dynamic Shorts hiding.');
             // Run initial check
             hideDynamicShortsContent();
             // Observe for new elements
@@ -298,9 +302,9 @@
                 // Fallback to body if specific containers not found immediately
                 mainContentObserverInstance.observe(document.body, { childList: true, subtree: true });
             }
-            console.log('Block Ad Banners: Observing for dynamic Shorts content.');
+            console.log('YTUltra++: Observing for dynamic Shorts content.');
         } else {
-            console.log('Block Ad Banners: Dynamic Shorts hiding is disabled.');
+            console.log('YTUltra++: Dynamic Shorts hiding is disabled.');
         }
     };
     // --- End of Dynamic Content Hider (Shorts) ---
@@ -311,7 +315,6 @@
         const body = document.body;
         const ytdApp = document.querySelector('ytd-app');
         const searchBox = document.querySelector('.ytSearchboxComponentInputBox');
-
         // Remove previous custom background styles first
         root.classList.remove('yt-ultra-custom-bg-enabled');
         body.classList.remove('yt-ultra-custom-bg-enabled');
@@ -336,37 +339,41 @@
             if (settings.customBackgroundType === 'color') {
                 root.style.setProperty('--yt-ultra-bg-color', settings.customBackgroundColor);
                 root.style.setProperty('--yt-ultra-bg-image', 'none'); // Explicitly no image
-                console.log('Block Ad Banners: Custom background color applied:', settings.customBackgroundColor);
+                console.log('YTUltra++: Custom background color applied:', settings.customBackgroundColor);
             } else if (settings.customBackgroundType === 'image') {
                 if (settings.customBackgroundUrl) {
-                    root.style.setProperty('--yt-ultra-bg-color', 'transparent'); // Ensure transparent if image is present
+                    root.style.setProperty('--yt-ultra-bg-color', 'transparent');
+                    // Ensure transparent if image is present
                     root.style.setProperty('--yt-ultra-bg-image', `url("${settings.customBackgroundUrl}")`);
                     root.style.setProperty('--yt-ultra-bg-size', 'cover'); // Set to 'cover' to ensure it fills the screen
                     root.style.setProperty('--yt-ultra-bg-repeat', 'no-repeat');
                     root.style.setProperty('--yt-ultra-bg-position', 'center center'); // Centered for optimal cover
-                    root.style.setProperty('--yt-ultra-bg-attachment', 'fixed'); // Key for wallpaper effect: remains fixed while content scrolls
-                    console.log('Block Ad Banners: Custom background image applied:', settings.customBackgroundUrl);
+                    root.style.setProperty('--yt-ultra-bg-attachment', 'fixed');
+                    // Key for wallpaper effect: remains fixed while content scrolls
+                    console.log('YTUltra++: Custom background image applied:', settings.customBackgroundUrl);
                 } else {
                     // No image URL provided for image type, revert to dark background
-                    root.style.setProperty('--yt-ultra-bg-color', '#181818'); // Fallback to YouTube's dark gray
-                    root.style.setProperty('--yt-ultra-bg-image', 'none'); // No image
+                    root.style.setProperty('--yt-ultra-bg-color', '#181818');
+                    // Fallback to YouTube's dark gray
+                    root.style.setProperty('--yt-ultra-bg-image', 'none');
+                    // No image
                     // Reset image-specific properties
                     root.style.setProperty('--yt-ultra-bg-size', 'auto');
                     root.style.setProperty('--yt-ultra-bg-repeat', 'repeat');
                     root.style.setProperty('--yt-ultra-bg-position', '0% 0%');
                     root.style.setProperty('--yt-ultra-bg-attachment', 'scroll');
-                    console.log('Block Ad Banners: Custom background type set to image, but no URL. Defaulting to dark background.');
+                    console.log('YTUltra++: Custom background type set to image, but no URL. Defaulting to dark background.');
                 }
             }
         } else {
-            console.log('Block Ad Banners: Custom background removed.');
+            console.log('YTUltra++: Custom background removed.');
         }
     };
     const initCustomBackground = () => {
         applyCustomBackground();
-        manageBackgroundObserver(); // Ensure observer is managed whenever custom background state changes
+        manageBackgroundObserver();
+        // Ensure observer is managed whenever custom background state changes
     };
-
     const manageBackgroundObserver = () => {
         const root = document.documentElement;
         const body = document.body;
@@ -375,11 +382,11 @@
         if (backgroundStyleObserver) {
             backgroundStyleObserver.disconnect();
             backgroundStyleObserver = null;
-            console.log('Block Ad Banners: Background style observer disconnected.');
+            console.log('YTUltra++: Background style observer disconnected.');
         }
 
         if (settings.enableCustomBackground) {
-            console.log('Block Ad Banners: Initializing background style observer.');
+            console.log('YTUltra++: Initializing background style observer.');
             backgroundStyleObserver = new MutationObserver((mutations) => {
                 mutations.forEach(mutation => {
                     if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
@@ -388,21 +395,18 @@
                     }
                 });
             });
-
             // Observe relevant elements for style changes to ensure background persistence
             if (root) backgroundStyleObserver.observe(root, { attributes: true, attributeFilter: ['style'] });
             if (body) backgroundStyleObserver.observe(body, { attributes: true, attributeFilter: ['style'] });
             // Wait for ytd-app if it's not immediately available
-            waitForElement('ytd-app', (appElement) => {
-                if (settings.enableCustomBackground && backgroundStyleObserver && !appElement._ytUltraObserved) {
-                    backgroundStyleObserver.observe(appElement, { attributes: true, attributeFilter: ['style'] });
-                    appElement._ytUltraObserved = true; // Mark as observed to prevent re-observing
-                    console.log('Block Ad Banners: ytd-app added to background observer.');
-                }
-            });
-            console.log('Block Ad Banners: Background style observer started for root, body, and ytd-app.');
+            if (ytdApp && !ytdApp._ytUltraObserved) {
+                backgroundStyleObserver.observe(ytdApp, { attributes: true, attributeFilter: ['style'] });
+                ytdApp._ytUltraObserved = true; // Mark as observed to prevent re-observing
+                console.log('YTUltra++: ytd-app added to background observer.');
+            }
+            console.log('YTUltra++: Background style observer started for root, body, and ytd-app.');
         } else {
-            console.log('Block Ad Banners: Custom background is disabled, observer not needed.');
+            console.log('YTUltra++: Custom background is disabled, observer not needed.');
         }
     };
     // --- End of Custom Background/Theme Implementation ---
@@ -422,7 +426,7 @@
                                 const rel = node.getAttribute('rel');
                                 if (rel === 'prefetch' || rel === 'prerender') {
                                     node.remove();
-                                    console.log(`Block Ad Banners Performance: Removed preload link: ${rel} - ${node.href}`);
+                                    console.log(`YTUltra++ Performance: Removed preload link: ${rel} - ${node.href}`);
                                 }
                             }
                         });
@@ -430,17 +434,18 @@
                 });
             });
             headObserver.observe(document.head, { childList: true });
-            console.log('Block Ad Banners Performance: Head preloading observer started.');
+            console.log('YTUltra++ Performance: Head preloading observer started.');
         } else {
-            console.log('Block Ad Banners Performance: Head preloading observer disabled.');
+            console.log('YTUltra++ Performance: Head preloading observer disabled.');
         }
     };
 
     const applyPerformanceTweaks = () => {
         // This function primarily orchestrates the CSS injection and observer management.
         updateAndInjectEarlyHidingCSS(); // Re-inject CSS to apply/remove performance rules
-        manageHeadPreloadObserver(); // Manage the observer for preloading links
-        console.log('Block Ad Banners: Performance Mode tweaks applied/updated.');
+        manageHeadPreloadObserver();
+        // Manage the observer for preloading links
+        console.log('YTUltra++: Performance Mode tweaks applied/updated.');
     };
     // --- End of Performance Mode Logic ---
 
@@ -479,13 +484,13 @@
         manageMainContentObserver(); // Re-initialize observer for new page content (Shorts)
         applyPerformanceTweaks(); // Apply performance tweaks on navigation
     });
-
     // Variable to hold the single instance of the overlay
     let settingsOverlayInstance = null;
+    let ultraButtonInstance = null;
 
     const createToggleButton = () => {
         const button = document.createElement('button');
-        button.textContent = 'Ultra++'; // Keeping the button name consistent as it opens the settings menu
+        button.textContent = 'Ultra++';
         button.id = 'yt-ultra-toggle-btn';
         Object.assign(button.style, {
             width: '120px', height: '38px', fontWeight: 'bold', fontSize: '14px',
@@ -494,6 +499,7 @@
             color: 'white', zIndex: '10000', marginRight: '12px',
             backdropFilter: 'blur(25px)',
             '-webkit-backdrop-filter': 'blur(25px)',
+            flexShrink: '0' // Prevent shrinking
         });
         return button;
     };
@@ -505,31 +511,22 @@
 
         const container = document.createElement('div');
         container.className = 'yt-ultra-container';
-        // Reduced padding here
-        Object.assign(container.style, {
-            padding: '25px', // Reduced from 40px
-            gap: '24px', // Reduced from 32px - main sections gap
-        });
-
 
         const closeBtn = document.createElement('div');
         closeBtn.textContent = '✖';
         closeBtn.className = 'yt-ultra-close-btn';
         closeBtn.onclick = () => { overlay.style.display = 'none'; };
-
         const title = document.createElement('h2');
         title.textContent = 'YouTubeUltra++ Settings';
         Object.assign(title.style, {
             fontSize: '36px', fontWeight: '700', textAlign: 'center', userSelect: 'none',
         });
-
         const toggleContainer = document.createElement('div');
         Object.assign(toggleContainer.style, {
             display: 'flex', flexDirection: 'column', alignItems: 'center',
             gap: '16px', // Reduced from 24px - gap between main sections
             width: '100%',
         });
-
         // Simple createToggle function (for boolean toggles)
         const createToggle = (id, labelText) => {
             const wrapper = document.createElement('div');
@@ -561,7 +558,7 @@
                 gap: '10px', // Reduced from 16px
                 width: '100%', border: '1px solid #333',
                 borderRadius: '8px',
-                padding: '10px', // Reduced from 16px
+                padding: '10px', //
             });
             contentElements.forEach(el => groupWrapper.appendChild(el));
             return groupWrapper;
@@ -581,11 +578,10 @@
         hideShortsToggleElement.querySelector('input[type="checkbox"]').onchange = (e) => {
             settings.hideShorts = e.target.checked;
             GM_setValue('hideShorts', e.target.checked);
-            // No longer injecting CSS for display:none for shorts, instead relying on JS element.remove()
-            manageMainContentObserver(); // Re-run observer for immediate removal
+            manageMainContentObserver();
+            // Re-run observer for immediate removal
         };
         toggleContainer.appendChild(createBorderlessSettingsGroupWrapper(hideShortsToggleElement));
-
         // Performance Mode Group
         const performanceModeToggleElement = createToggle('enablePerformanceMode', 'Performance Mode');
         performanceModeToggleElement.querySelector('input[type="checkbox"]').onchange = (e) => {
@@ -594,11 +590,8 @@
             applyPerformanceTweaks(); // Apply/remove performance tweaks immediately
         };
         toggleContainer.appendChild(createBorderlessSettingsGroupWrapper(performanceModeToggleElement));
-
-
         // Custom Background Group
         const customBgToggleElement = createToggle('enableCustomBackground', 'Enable Custom Background');
-
         const customBgDetailsWrapper = document.createElement('div');
         customBgDetailsWrapper.id = 'customBgDetailsWrapper'; // Added ID
         Object.assign(customBgDetailsWrapper.style, {
@@ -606,7 +599,6 @@
             flexDirection: 'column', alignItems: 'center', gap: '16px',
             width: '100%',
         });
-
         // Type Selection (Color/Image)
         const typeSelectionWrapper = document.createElement('div');
         Object.assign(typeSelectionWrapper.style, { display: 'flex', gap: '20px' });
@@ -627,16 +619,15 @@
             radioWrapper.append(radio, label);
             return { radio, radioWrapper };
         };
-
         const { radio: colorRadio, radioWrapper: colorRadioWrapper } = createRadio('backgroundType', 'color', 'Custom Color', settings.customBackgroundType === 'color');
         const { radio: imageRadio, radioWrapper: imageRadioWrapper } = createRadio('backgroundType', 'image', 'Image Link (JPG)', settings.customBackgroundType === 'image');
 
         typeSelectionWrapper.append(colorRadioWrapper, imageRadioWrapper);
         customBgDetailsWrapper.appendChild(typeSelectionWrapper);
-
         // Color Picker
         const colorPickerWrapper = document.createElement('div');
-        colorPickerWrapper.id = 'colorPickerWrapper'; // Added ID
+        colorPickerWrapper.id = 'colorPickerWrapper';
+        // Added ID
         Object.assign(colorPickerWrapper.style, {
             display: settings.customBackgroundType === 'color' ? 'flex' : 'none',
             justifyContent: 'center', alignItems: 'center', width: '100%', marginTop: '0px',
@@ -685,7 +676,6 @@
             if (imageUrlWrapper) imageUrlWrapper.style.display = settings.customBackgroundType === 'image' ? 'flex' : 'none';
             applyCustomBackground();
         };
-
         // Event listeners for radio buttons
         colorRadio.onchange = () => {
             if (colorRadio.checked) {
@@ -701,25 +691,22 @@
                 updateBackgroundOptionsVisibility();
             }
         };
-
         // Ensure the details wrapper shows/hides when master enableCustomBackground toggle changes
         customBgToggleElement.querySelector('input[type="checkbox"]').onchange = (e) => {
             settings.enableCustomBackground = e.target.checked;
             GM_setValue('enableCustomBackground', e.target.checked);
             if (customBgDetailsWrapper) customBgDetailsWrapper.style.display = e.target.checked ? 'flex' : 'none';
-            applyCustomBackground(); // Apply styles immediately
-            manageBackgroundObserver(); // Start/stop observer based on new setting
+            applyCustomBackground();
+            // Apply styles immediately
+            manageBackgroundObserver();
+            // Start/stop observer based on new setting
         };
-
         // Append the whole Custom Background group to toggleContainer
         toggleContainer.appendChild(createBorderlessSettingsGroupWrapper(customBgToggleElement, customBgDetailsWrapper));
-
-
         const applyButton = document.createElement('button');
         applyButton.textContent = 'Apply & Reload';
         applyButton.className = 'yt-ultra-apply-btn';
         applyButton.onclick = () => location.reload();
-
         container.append(closeBtn, title, toggleContainer, applyButton);
         overlay.appendChild(container);
 
@@ -728,46 +715,120 @@
     };
 
     addScopedCSS();
+    settingsOverlayInstance = createSettingsOverlay(); // Create overlay once
 
-    waitForElement('#end, #masthead-container #buttons, #masthead #buttons', (targetElement) => {
-        let insertPoint = targetElement;
-        if (targetElement.id === 'end' && !targetElement.querySelector('#buttons')) {
-             // Fallback logic for #end if #buttons isn't a direct child
-        } else if (targetElement.matches('#masthead-container #buttons, #masthead #buttons')) {
-            insertPoint = targetElement;
-        } else {
-            insertPoint = document.querySelector('#end') || document.body; // Ultimate fallback
+    const ensureButtonPresence = () => {
+        if (ultraButtonInstance && ultraButtonInstance.isConnected) {
+            return; // Button is already in DOM
         }
 
-        if (document.getElementById('yt-ultra-toggle-btn')) return;
-        const button = createToggleButton();
-        // Create the overlay only once
-        settingsOverlayInstance = createSettingsOverlay();
-        insertPoint.prepend(button);
+        const mastheadButtons = document.querySelector('#buttons.ytd-masthead');
+        const endButtons = document.querySelector('#end #buttons'); // Specific to new YouTube layout
+        const accountButton = document.querySelector('ytd-masthead #end #account-button'); // Fallback for prepending
 
-        button.onclick = () => {
-            // Simply toggle display for the existing overlay
-            if (settingsOverlayInstance) {
-                settingsOverlayInstance.style.display = 'flex';
-                // Re-initialize the background options visibility for accurate display using IDs
-                const customBgDetailsWrapper = document.getElementById('customBgDetailsWrapper');
-                const colorPickerWrapper = document.getElementById('colorPickerWrapper');
-                const imageUrlWrapper = document.getElementById('imageUrlWrapper');
+        let insertPoint = null;
 
-                if (settings.enableCustomBackground) {
-                    if (customBgDetailsWrapper) customBgDetailsWrapper.style.display = 'flex';
-                    if (colorPickerWrapper) colorPickerWrapper.style.display = settings.customBackgroundType === 'color' ? 'flex' : 'none';
-                    if (imageUrlWrapper) imageUrlWrapper.style.display = settings.customBackgroundType === 'image' ? 'flex' : 'none';
-                } else {
-                    if (customBgDetailsWrapper) customBgDetailsWrapper.style.display = 'none';
-                }
+        if (mastheadButtons) {
+            insertPoint = mastheadButtons;
+        } else if (endButtons) {
+            insertPoint = endButtons;
+        } else if (accountButton && accountButton.parentElement) {
+            // Insert before the account button if #buttons container is not found directly
+            insertPoint = accountButton.parentElement;
+        }
+
+        if (insertPoint) {
+            if (!ultraButtonInstance) {
+                ultraButtonInstance = createToggleButton();
+                ultraButtonInstance.onclick = () => {
+                    if (settingsOverlayInstance) {
+                        settingsOverlayInstance.style.display = 'flex';
+                        // Re-initialize the background options visibility for accurate display using IDs
+                        const customBgDetailsWrapper = document.getElementById('customBgDetailsWrapper');
+                        const colorPickerWrapper = document.getElementById('colorPickerWrapper');
+                        const imageUrlWrapper = document.getElementById('imageUrlWrapper');
+
+                        if (settings.enableCustomBackground) {
+                            if (customBgDetailsWrapper) customBgDetailsWrapper.style.display = 'flex';
+                            if (colorPickerWrapper) colorPickerWrapper.style.display = settings.customBackgroundType === 'color' ? 'flex' : 'none';
+                            if (imageUrlWrapper) imageUrlWrapper.style.display = settings.customBackgroundType === 'image' ? 'flex' : 'none';
+                        } else {
+                            if (customBgDetailsWrapper) customBgDetailsWrapper.style.display = 'none';
+                        }
+                    }
+                };
             }
-        };
+            if (!ultraButtonInstance.isConnected) {
+                insertPoint.prepend(ultraButtonInstance);
+                console.log("YTUltra++: Button re-inserted.");
+            }
+        } else {
+            console.log("YTUltra++: Insert point for button not found yet.");
+        }
+    };
+
+
+    // Use a MutationObserver to ensure the button is persistently present
+    const mastheadObserver = new MutationObserver(debounce(() => {
+        ensureButtonPresence();
+    }, 100)); // Debounce to avoid excessive calls
+
+    // Start observing a stable parent element, like ytd-masthead
+    const startButtonObserver = () => {
+        const masthead = document.querySelector('ytd-masthead');
+        if (masthead) {
+            mastheadObserver.observe(masthead, { childList: true, subtree: true, attributes: false });
+            console.log("YTUltra++: Started observing ytd-masthead for button presence.");
+            ensureButtonPresence(); // Initial check
+        } else {
+            // If masthead isn't available immediately, try again after a short delay
+            setTimeout(startButtonObserver, 500);
+        }
+    };
+
+
+    // Call the observer starter after the DOM is ready or on navigation finishes
+    window.addEventListener('load', () => {
+        startButtonObserver();
+        initCustomBackground();
+        manageMainContentObserver();
+        applyPerformanceTweaks();
     });
 
-    waitForElement('.ytSearchboxComponentInputBox', (searchBox) => {
-        if (settings.enableCustomBackground) {
-            searchBox.classList.add('yt-ultra-custom-bg-enabled');
-        }
+    window.addEventListener('yt-navigate-finish', () => {
+        startButtonObserver(); // Re-check button on navigation
+        initCustomBackground();
+        manageMainContentObserver();
+        applyPerformanceTweaks();
     });
+
+    // Also call it immediately if possible
+    startButtonObserver();
+
+    // Ensure custom background class for search box, which might load later
+    const ensureSearchBoxBackground = () => {
+        const searchBox = document.querySelector('.ytSearchboxComponentInputBox');
+        if (searchBox) {
+            if (settings.enableCustomBackground) {
+                searchBox.classList.add('yt-ultra-custom-bg-enabled');
+            } else {
+                searchBox.classList.remove('yt-ultra-custom-bg-enabled');
+            }
+        }
+    };
+    // Observe the search box specifically
+    const searchBoxObserver = new MutationObserver(debounce(ensureSearchBoxBackground, 100));
+    const startSearchBoxObserver = () => {
+        const masthead = document.querySelector('ytd-masthead');
+        if (masthead) {
+            searchBoxObserver.observe(masthead, { childList: true, subtree: true });
+            console.log("YTUltra++: Started observing ytd-masthead for search box background.");
+            ensureSearchBoxBackground(); // Initial check
+        } else {
+            setTimeout(startSearchBoxObserver, 500);
+        }
+    };
+    window.addEventListener('load', startSearchBoxObserver);
+    window.addEventListener('yt-navigate-finish', startSearchBoxObserver);
+    startSearchBoxObserver(); // Initial call
 })();
